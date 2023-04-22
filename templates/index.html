@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Jackpot</title>
+    <style>
+        body {
+            background-color: #101010;
+            color: #00ff00;
+            font-family: monospace;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+        button {
+            background-color: #00ff00;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #00cc00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Simple Jackpot 5x Payout</h1>
+        <p>Press the button to play:</p>
+        <button id="playBtn">Play</button>
+        <p id="output"></p>
+    </div>
+    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
+    <script>
+        const CONTRACT_ABI = [
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "_betAmount",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "constructor"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "winner",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					}
+				],
+				"name": "Payout",
+				"type": "event"
+			},
+			{
+				"inputs": [],
+				"name": "betAmount",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "owner",
+				"outputs": [
+					{
+						"internalType": "address payable",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "play",
+				"outputs": [],
+				"stateMutability": "payable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "_betAmount",
+						"type": "uint256"
+					}
+				],
+				"name": "setBetAmount",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "withdraw",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			}
+		];
+
+        const CONTRACT_ADDRESS = "0xe4E1526D0E92d64c133F586e3a5Ffd5F6ac82a85"; // Replace with your contract's address
+
+        const playBtn = document.getElementById("playBtn");
+        const output = document.getElementById("output");
+
+        async function requestAccount() {
+            if (window.ethereum) {
+                await window.ethereum.request({ method: "eth_requestAccounts" });
+            } else {
+                alert("Ethereum browser extension like MetaMask is required to use this app.");
+            }
+        }
+
+        async function playGame() {
+    if (window.ethereum) {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const signer = provider.getSigner();
+        const simpleJackpotContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+        try {
+            const betAmount = await simpleJackpotContract.betAmount();
+            console.log("Bet amount:", betAmount.toString());
+            const tx = await simpleJackpotContract.play({ value: betAmount });
+            console.log("Transaction:", tx);
+            output.innerText = "Transaction sent! Waiting for confirmation...";
+            const receipt = await tx.wait();
+            console.log("Transaction receipt:", receipt);
+
+            if (receipt.events) {
+                const payoutEvent = receipt.events.find(event => event.event === "Payout");
+                if (payoutEvent) {
+                    output.innerText = `Congratulations! You won ${ethers.utils.formatEther(payoutEvent.args.amount)} Ether.`;
+                } else {
+                    output.innerText = "You didn't win this time. Better luck next time!";
+                }
+            }
+        } catch (error) {
+            console.error("Error:", error);
+            output.innerText = "Error: " + error.message;
+        }
+    } else {
+        alert("Ethereum browser extension like MetaMask is required to use this app.");
+    }
+}
+
+        playBtn.addEventListener("click", async () => {
+            await requestAccount();
+            playGame();
+        });
+    </script>
+</body>
+</html>
